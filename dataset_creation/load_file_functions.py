@@ -1,7 +1,6 @@
 import os
 
 import cv2
-import mayavi.mlab as mlab
 import numpy as np
 import  open3d as o3d
 

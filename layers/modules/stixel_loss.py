@@ -16,8 +16,13 @@ class StixelLoss(nn.Module):
         target = (target - 0.5).view(target.size(0), target.size(1), 1)
         target = (target - torch.floor(target)) + torch.floor(target) + 0.0001
         target = target.view(target.size(0), target.size(1), 1)
-        fp = torch.gather(predect, 2, torch.floor(target).type(torch.LongTensor))
-        cp = torch.gather(predect, 2, torch.ceil(target).type(torch.LongTensor))
+        f_tensor = torch.floor(target).type(torch.LongTensor)
+        c_tensor = torch.ceil(target).type(torch.LongTensor)
+        if torch.cuda.is_available():
+            f_tensor = f_tensor.type(torch.cuda.LongTensor)
+            c_tensor = c_tensor.type(torch.cuda.LongTensor)
+        fp = torch.gather(predect, 2, f_tensor)
+        cp = torch.gather(predect, 2, c_tensor)
         p = fp * (torch.ceil(target) - target) + cp * (target - torch.floor(target))
         p = p.view(havetarget.size(0), havetarget.size(1))
         loss = -torch.log(p) * havetarget

@@ -4,6 +4,8 @@ import numpy as np
 from math import sqrt as sqrt
 from itertools import product as product
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 class PriorBox(object):
     """Compute priorbox coordinates in center-offset form for each source
     feature map.
@@ -98,7 +100,7 @@ class Prior(object):
         self.feature_size=np.array(feature_size)
         self.aspect_ratios=[1.5,2.2,3]
         self.adjust_prior=torch.FloatTensor([self.h/self.w,self.w/self.h])
-        self.adjust_prior=torch.sqrt(self.adjust_prior) #.cuda()
+        self.adjust_prior=torch.sqrt(self.adjust_prior).to(device) #.cuda()
 
     def forward(self):
         mean = []

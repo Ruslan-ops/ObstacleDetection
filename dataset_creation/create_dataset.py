@@ -4,7 +4,6 @@ from pathlib import Path
 import shutil
 
 import cv2
-import open3d.cpu.pybind.geometry
 
 from projection_to_camera import *
 from load_file_functions import *

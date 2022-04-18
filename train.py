@@ -29,7 +29,10 @@ parser.add_argument('--resume',type=str,help='The path of checkpoint')
 
 args = parser.parse_args()
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+if torch.cuda.is_available():
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
 #torch.set_default_tensor_type('torch.cuda.FloatTensor')
 ssd_dim = (800,370)  # the size of image after resize (width,height)
 means = (104, 117, 123)
@@ -65,7 +68,7 @@ cudnnz.benchmark = True
 
 
 
-#net = net.cuda()
+net = net.to(device)
 
 
 
@@ -104,9 +107,9 @@ def stixel_train():
             # cv2.imshow('aa', np_arr)
             # cv2.waitKey(0)
 
-            images=Variable(images)
-            havetargets=Variable(havetargets)
-            targets=Variable(targets)
+            images=Variable(images).to(device)
+            havetargets=Variable(havetargets).to(device)
+            targets=Variable(targets).to(device)
             dec , stixel = net(images)
             optimizer.zero_grad()
             loss=lossfunction(stixel,havetargets,targets)

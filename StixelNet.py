@@ -6,6 +6,7 @@ from torch.autograd import Variable
 from layers import *
 import os
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class StixelNet(nn.Module):
     """Single Shot Multibox Architecture
