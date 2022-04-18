@@ -367,7 +367,7 @@ def create_dataset_for_series(series_path, calib, out_data_path, sample_full_nam
             continue
 
 def create_dataset(source_data_path, remove_source_images=False):
-    out_data_path = '../dataset'
+    out_data_path = 'dataset'
     kitti_dates = os.fsencode(source_data_path)
     print(f'-dataset creation started from {source_data_path}')
     for date_dir in os.listdir(kitti_dates):
