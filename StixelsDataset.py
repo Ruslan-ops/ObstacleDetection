@@ -6,20 +6,22 @@ import pandas as pd
 import torch
 import settings
 import numpy as np
+from pathlib import Path
 
 
 class StixelsDataset(Dataset):
     def __init__(self, annotations_path, dataset_path, transform=None):
         self.annotations = self._read_annotations_txt(annotations_path)
-        self.dataset_path = dataset_path
+        self.dataset_path = Path(annotations_path).parent.absolute()
+        self.dataset_parent_path = self.dataset_path.parent.absolute()
         self.transform = transform
 
     def __len__(self):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.annotations[index][0])
-        target_path = self.annotations[index][1]
+        img_path = os.path.join(self.dataset_parent_path, self.annotations[index][0])
+        target_path = os.path.join(self.dataset_parent_path, self.annotations[index][1])
         image = cv2.imread(img_path)
         h, w, c = image.shape
         image, _a, _b = self.transform(image, None, None)

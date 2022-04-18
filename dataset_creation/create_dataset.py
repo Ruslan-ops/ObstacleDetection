@@ -417,7 +417,7 @@ def create_dataset_annotations(dataset_path):
 
 
 if __name__ == '__main__':
-    create_dataset('source_data')
+    create_dataset('source_data', remove_source_images=False)
 
     #create_dataset_old()
     # t1 = time.time()
