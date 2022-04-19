@@ -24,7 +24,7 @@ def get_points_out_of_ground_plane(point_cloud):
     #pcd.paint_uniform_color([0.6, 0.6, 0.6])
     #o3d.visualization.draw_geometries([pcd]) #Works only outside Jupyter/Colab
 
-    plane_model, inliers = point_cloud.segment_plane(distance_threshold=0.2, ransac_n=3, num_iterations=2000)
+    plane_model, inliers = point_cloud.segment_plane(distance_threshold=0.1, ransac_n=3, num_iterations=2000)
     outlier_cloud = point_cloud.select_by_index(inliers, invert=True)
 
     return outlier_cloud, plane_model
