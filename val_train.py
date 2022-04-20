@@ -11,6 +11,7 @@ from StixelsDataset import *
 from utils.augmentations import SSDAugmentation, StixelAugmentation
 from layers.modules import MultiBoxLoss, StixelLoss
 from StixelNet import build_net
+from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 import settings
 import time
@@ -72,12 +73,33 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
 
 
 def stixel_train():
+
+
     net.train()
     printfrq = 1
     step = 0
     dataset = StixelsDataset(args.basepath_s, args.gt_path_s, StixelAugmentation(size=ssd_dim, mean=means))
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=False, pin_memory=not torch.cuda.is_available())
+
+    validation_split = 0.1
+    dataset_len = len(dataset)
+    indices = list(range(dataset_len))
+    val_len = int(np.floor(validation_split * dataset_len))
+    validation_idx = np.random.choice(indices, size=val_len, replace=False)
+    train_idx = list(set(indices) - set(validation_idx))
+
+    train_sampler = SubsetRandomSampler(train_idx)
+    validation_sampler = SubsetRandomSampler(validation_idx)
+
+    train_loader = torch.utils.data.DataLoader(dataset, sampler=train_sampler)
+    validation_loader = torch.utils.data.DataLoader(dataset, sampler=validation_sampler)
+    data_loaders = {"train": train_loader, "val": validation_loader}
+    data_lengths = {"train": len(train_idx), "val": val_len}
+
+    n_epochs = 40
+
+
     lossfunction = StixelLoss()
     minloss = 9999
     min_sum_loss = 9999

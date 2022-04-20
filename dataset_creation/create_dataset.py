@@ -13,16 +13,16 @@ from point_clouds import *
 import scipy.ndimage as ndimage
 
 # Set path of image, calibration file, lidar 2011_09_28
-image_number = '0000000166'
-data_date = '2011_09_28'
-object_calib_path = '2011_09_28/calibration/' + image_number + '.txt'
-calib_path = '2011_09_28/calibration/' + data_date + '/'
-image_path = '2011_09_28/images/' + image_number + '.png'
-pcd_path = '2011_09_28/point_clouds/' + image_number + '.pcd'
-ground_truth_path = 'data/2011_09_28/39/targets/StixelsGroundTruth.txt'
+# image_number = '0000000166'
+# data_date = '2011_09_28'
+# object_calib_path = '2011_09_28/calibration/' + image_number + '.txt'
+# calib_path = '2011_09_28/calibration/' + data_date + '/'
+# image_path = '2011_09_28/images/' + image_number + '.png'
+# pcd_path = '2011_09_28/point_clouds/' + image_number + '.pcd'
+# ground_truth_path = 'data/2011_09_28/39/targets/StixelsGroundTruth.txt'
 
 
-def create_dataset_simple():
+def create_dataset_simple(image_path, object_calib_path, calib_path, pcd_path, image_number):
     rgb = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
     img_height, img_width, img_channel = rgb.shape
 
@@ -173,7 +173,14 @@ def create_dataset_simple():
 
 def create_data_sample(image, calib, lidar_pc, out_data_path):
     img_height, img_width, img_channel = image.shape
-    lidar_pc, model = remove_ground(lidar_pc)
+    remove_high_points(lidar_pc, -0.8)
+    lidar_pc, plane_model = remove_ground(lidar_pc)
+
+    plane_size = get_point_cloud_size(lidar_pc)
+    ground_plane_pc = get_plane_point_cloud(plane_size, plane_model)
+    ground_plane_pc.paint_uniform_color([1.0, 0, 0])
+    #o3d.visualization.draw_geometries([lidar_pc, ground_plane_pc])
+
     stixels = np.zeros(image.shape[1])
 
     lidar_pc = np.asarray(lidar_pc.points)
@@ -216,7 +223,7 @@ def create_data_sample(image, calib, lidar_pc, out_data_path):
 
 
 
-def create_dataset_old():
+def create_dataset_old(ground_truth_path, image_number, image_path):
     gtfile = open(ground_truth_path)
     data = gtfile.readlines()
     frame = image_number.lstrip('0')
@@ -237,28 +244,29 @@ def create_dataset_old():
     cv2.waitKey(0)
 
 
-def create_dataset_harder():
+def create_dataset_harder(image_path, calib_path, pcd_path):
     rgb = cv2.imread(image_path)
     img_height, img_width, img_channel = rgb.shape
 
     # Load calibration
-    calib = read_object_calib_file(object_calib_path)
+    #calib = read_object_calib_file(object_calib_path)
     calib = read_calib_file(calib_path)
 
     # Load labels
     # labels = load_label('2011_09_28/000114_label.txt')
 
     # Load Lidar PC
-    pc_velo, pcd = load_pc_velo_scan(pcd_path)
+    pcd = load_pc_velo_scan(pcd_path)
     #pcd =
     pcd, model = remove_ground(pcd)
-    pc_velo = np.asarray(pcd.points)
+    #pc_velo = np.asarray(pcd.points)
     #mask = pc_velo[:, 0] > 0
     #pcd.points = o3d.utility.Vector3dVector(pc_velo[mask])
-    pc_velo = np.asarray(pcd.points)
+    #pc_velo = np.asarray(pcd.points)
     #pc_velo = pc_velo[:, :3]
-    clusters = [pc_velo] #get_pc_opject_clusters(pcd)
+    #clusters = [pc_velo] #get_pc_opject_clusters(pcd)
     pcd_clusters = [pcd] #delete
+    #o3d.visualization.draw_geometries([pcd])
 
     # clusters = [cluster for cluster in clusters if is_cluster_fits_in_image(np.stack(cluster), calib, rgb)]
     # pcd_clusters = [o3d.geometry.PointCloud() for i in range(len(clusters))]
@@ -388,15 +396,38 @@ def create_dataset_annotations(dataset_path):
         images = os.fsencode(images_dir)
         for index, image in enumerate(os.listdir(images)):
             sample_name = Path(os.fsdecode(image)).stem
-            image_path = os.path.join(images_dir, sample_name + '.png')
-            target_path = os.path.join(targets_dir, sample_name + '.txt')
+            image_name = sample_name + '.png'
+            target_name =  sample_name + '.txt'
+            image_path = os.path.join(images_dir, image_name)
+            target_path = os.path.join(targets_dir, target_name)
             if os.path.exists(target_path):
-                info = f'{index}\t{image_path}\t{target_path}'
+                info = f'{index}\t{image_name}\t{target_name}'
                 file.write(info + '\n')
             else:
                 print(f'ERROR: No target file in dataset for image {image_path}. It was skipped. Create target file for the image, or delete the image')
                 continue
 
+from StixelsDataset import *
+
+def draw_stixels(image, points, img_name):
+    for x, y in points:
+        if y > 0:
+            cv2.circle(image, (x, y), 2, color=(0, 255, 0), thickness=1)
+    cv2.imshow(img_name, image)
+    cv2.waitKey(0)
+
+
+def visualize_dataset(dataset_path):
+    dataset = StixelsDataset(os.path.join(dataset_path, 'annotations.txt'), dataset_path)
+    annotations = dataset.annotations
+    for i, (img_name, tar_name) in enumerate(annotations):
+        if i % 10 != 0:
+            continue
+        image_path = os.path.join(dataset.images_path, img_name)
+        target_path = os.path.join(dataset.targets_path, tar_name)
+        image = cv2.imread(image_path)
+        points = dataset._read_target_file(target_path)
+        draw_stixels(image, points, img_name)
 
 
 
@@ -418,7 +449,13 @@ def create_dataset_annotations(dataset_path):
 
 if __name__ == '__main__':
     #create_dataset('source_data', remove_source_images=False)
-    create_dataset_annotations('../dataset')
+    #create_dataset_harder('source_data/2011_09_26/46/images/0000000000.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_26/46/lidar/0000000000.bin')
+    # image = cv2.imread('source_data/2011_09_26/46/images/0000000020.png')
+    # calib = read_calib_file('source_data/2011_09_26/calibration')
+    # lidar_pc = load_pc_velo_scan('source_data/2011_09_26/46/lidar/0000000020.bin')
+    # create_data_sample(image, calib, lidar_pc, 'jofff')
+    #create_dataset_annotations('../dataset')
+    visualize_dataset('../dataset')
 
     #create_dataset_old()
     # t1 = time.time()

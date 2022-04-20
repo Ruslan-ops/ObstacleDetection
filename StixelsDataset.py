@@ -13,6 +13,8 @@ class StixelsDataset(Dataset):
     def __init__(self, annotations_path, dataset_path, transform=None):
         self.annotations = self._read_annotations_txt(annotations_path)
         self.dataset_path = Path(annotations_path).parent.absolute()
+        self.images_path = os.path.join(dataset_path, 'images')
+        self.targets_path = os.path.join(dataset_path, 'targets')
         self.dataset_parent_path = self.dataset_path.parent.absolute()
         self.transform = transform
 
@@ -20,8 +22,8 @@ class StixelsDataset(Dataset):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.dataset_parent_path, self.annotations[index][0])
-        target_path = os.path.join(self.dataset_parent_path, self.annotations[index][1])
+        img_path = os.path.join(self.images_path, self.annotations[index][0])
+        target_path = os.path.join(self.targets_path, self.annotations[index][1])
         image = cv2.imread(img_path)
         h, w, c = image.shape
         image, _a, _b = self.transform(image, None, None)

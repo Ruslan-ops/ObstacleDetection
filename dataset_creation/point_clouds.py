@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 def remove_ground(pcd):
     rest_points, plane_model = get_points_out_of_ground_plane(pcd)
+    #o3d.visualization.draw_geometries([rest_points]) #Works only outside Jupyter/Colab
+
     [a, b, c, d] = plane_model
     #print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
     plane_norm = np.array([a, b, c])
@@ -18,13 +20,42 @@ def remove_ground(pcd):
     #inliers = np.asarray(inliers.points)
     return rest_points, plane_model
 
+def remove_high_points(point_cloud, height=1.):
+    #o3d.visualization.draw_geometries([point_cloud])
+    np_points = np.asarray(point_cloud.points)
+    np_points = np_points[np_points[:,2] < height]
+    point_cloud.points = o3d.utility.Vector3dVector(np_points)
+    #o3d.visualization.draw_geometries([point_cloud])
+    return point_cloud
+
+
+
+def get_point_cloud_size(point_cloud, axis=0):
+    np_pc = np.asarray(point_cloud.points)
+    pc_size = (np_pc[:, axis].min(), np_pc[:, axis].max())
+    return pc_size
+
+def get_plane_point_cloud(size, plane_model):
+    x = np.linspace(size[0], size[1], 300)
+    mesh_x, mesh_y = np.meshgrid(x, x)
+    (a, b, c, d) = plane_model
+    z = (a * mesh_x + b * mesh_y - d) * 1/c
+    # = (z - z.min()) / (z.max() - z.min())
+    xyz = np.zeros((np.size(mesh_x), 3))
+    xyz[:, 0] = np.reshape(mesh_x, -1)
+    xyz[:, 1] = np.reshape(mesh_y, -1)
+    xyz[:, 2] = np.reshape(z, -1)
+    plane_pc = o3d.geometry.PointCloud()
+    plane_pc.points = o3d.utility.Vector3dVector(xyz)
+    return plane_pc
+
 
 def get_points_out_of_ground_plane(point_cloud):
     point_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=20., max_nn=2), fast_normal_computation=True)
     #pcd.paint_uniform_color([0.6, 0.6, 0.6])
-    #o3d.visualization.draw_geometries([pcd]) #Works only outside Jupyter/Colab
+    #o3d.visualization.draw_geometries([point_cloud]) #Works only outside Jupyter/Colab
 
-    plane_model, inliers = point_cloud.segment_plane(distance_threshold=0.1, ransac_n=3, num_iterations=2000)
+    plane_model, inliers = point_cloud.segment_plane(distance_threshold=0.1, ransac_n=3, num_iterations=10000)
     outlier_cloud = point_cloud.select_by_index(inliers, invert=True)
 
     return outlier_cloud, plane_model

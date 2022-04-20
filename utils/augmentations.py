@@ -427,7 +427,7 @@ class StixelAugmentation(object):
             ConvertFromInts(),
             #Expand(self.mean),
             #RandomMirror(),
-            Resize(self.size),
+            #Resize(self.size),
             SubtractMeans(self.mean)
         ])
 
