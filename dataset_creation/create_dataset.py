@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 
 import cv2
+import numpy as np
 
 from projection_to_camera import *
 from load_file_functions import *
@@ -172,14 +173,19 @@ def create_dataset_simple(image_path, object_calib_path, calib_path, pcd_path, i
     return stixels, column_height
 
 def create_data_sample(image, calib, lidar_pc, out_data_path):
+    start_lidar = lidar_pc
     img_height, img_width, img_channel = image.shape
-    remove_high_points(lidar_pc, -0.8)
+    lidar_pc = remove_high_points(lidar_pc, -0.8)
     lidar_pc, plane_model = remove_ground(lidar_pc)
+    lidar_pc = remove_far_points(lidar_pc, 25)
+
+    lidar_pc = add_projected_points(plane_model, lidar_pc)
 
     plane_size = get_point_cloud_size(lidar_pc)
     ground_plane_pc = get_plane_point_cloud(plane_size, plane_model)
-    ground_plane_pc.paint_uniform_color([1.0, 0, 0])
-    #o3d.visualization.draw_geometries([lidar_pc, ground_plane_pc])
+    ground_plane_pc.paint_uniform_color([0, 1.0, 0])
+    lidar_pc.paint_uniform_color([0, 0, 1.0])
+    #o3d.visualization.draw_geometries([lidar_pc, ground_plane_pc, start_lidar])
 
     stixels = np.zeros(image.shape[1])
 
@@ -217,7 +223,7 @@ def create_data_sample(image, calib, lidar_pc, out_data_path):
             prev_x = center_x
 
             center_y = int(stixels[i]) + img_height - column_height
-            if center_y > 0:
+            if center_y > 0 and center_y > column_height / 2:
                 info = f'{center_x} {center_y}'
                 out.write(info + '\n')
 
@@ -256,16 +262,36 @@ def create_dataset_harder(image_path, calib_path, pcd_path):
     # labels = load_label('2011_09_28/000114_label.txt')
 
     # Load Lidar PC
-    pcd = load_pc_velo_scan(pcd_path)
+    lidar_pc = load_pc_velo_scan(pcd_path)
+
+    lidar_pc = remove_high_points(lidar_pc, -0.8)
+    lidar_pc = remove_far_points(lidar_pc, 25)
+    start_lidar = lidar_pc
+
     #pcd =
-    pcd, model = remove_ground(pcd)
+    lidar_pc, plane_model = remove_ground(lidar_pc)
+    lidar_pc = lidar_pc
+
+    lidar_pc = add_projected_points(plane_model, lidar_pc)
+    plane_size = get_point_cloud_size(lidar_pc)
+    ground_plane_pc = get_plane_point_cloud(plane_size, plane_model)
+    ground_plane_pc.paint_uniform_color([0, 1.0, 0])
+    lidar_pc.paint_uniform_color([0, 0, 1.0])
+    o3d.visualization.draw_geometries([lidar_pc, ground_plane_pc, start_lidar])
+
+    plane_size = get_point_cloud_size(lidar_pc)
+    ground_plane_pc = get_plane_point_cloud(plane_size, plane_model)
+    ground_plane_pc.paint_uniform_color([1.0, 0, 0])
+    lidar_pc.paint_uniform_color([0, 0, 1.0])
+    o3d.visualization.draw_geometries([lidar_pc, ground_plane_pc])
+    lidar_pc = lidar_pc
     #pc_velo = np.asarray(pcd.points)
     #mask = pc_velo[:, 0] > 0
     #pcd.points = o3d.utility.Vector3dVector(pc_velo[mask])
     #pc_velo = np.asarray(pcd.points)
     #pc_velo = pc_velo[:, :3]
     #clusters = [pc_velo] #get_pc_opject_clusters(pcd)
-    pcd_clusters = [pcd] #delete
+    pcd_clusters = [lidar_pc] #delete
     #o3d.visualization.draw_geometries([pcd])
 
     # clusters = [cluster for cluster in clusters if is_cluster_fits_in_image(np.stack(cluster), calib, rgb)]
@@ -334,6 +360,10 @@ def create_dataset_for_date(date_path, out_data_path, sample_full_name, remove_s
 
 
 def create_dataset_for_series(series_path, calib, out_data_path, sample_full_name, remove_source_images=False):
+    series_name = series_path[-2:]
+    if series_name != '43':
+        return
+
     print(f'---creating for series {series_path}')
     source_images_path = os.path.join(series_path, 'images')
     source_lidar_path = os.path.join(series_path, 'lidar')
@@ -375,7 +405,7 @@ def create_dataset_for_series(series_path, calib, out_data_path, sample_full_nam
             continue
 
 def create_dataset(source_data_path, remove_source_images=False):
-    out_data_path = '../dataset'
+    out_data_path = 'dataset'
     kitti_dates = os.fsencode(source_data_path)
     print(f'-dataset creation started from {source_data_path}')
     for date_dir in os.listdir(kitti_dates):
@@ -409,25 +439,61 @@ def create_dataset_annotations(dataset_path):
 
 from StixelsDataset import *
 
-def draw_stixels(image, points, img_name):
+def draw_stixels(image, points, img_name, stixels100):
+    if stixels100:
+        stixel_columns_amount = 100
+        targets = np.zeros((stixel_columns_amount), dtype=np.float32)
+        for x, y in points:
+            index = int((x * stixel_columns_amount - 0.00001)/image.shape[1])
+            if y > targets[index]:
+                targets[index] = y
+        #targets = np.clip(targets, 0.51, 49.49)
+        points = []
+        for ind, stix in enumerate(targets):
+            xcor = int(ind * image.shape[1] / stixel_columns_amount)
+            ycor = stix
+            points.append((xcor, ycor))
+        points = np.array(points)
+
     for x, y in points:
-        if y > 0:
-            cv2.circle(image, (x, y), 2, color=(0, 255, 0), thickness=1)
+        if y >= 0:
+            x = int(x)
+            y = int(y)
+            cv2.circle(image, (x, y), 5, color=(0, 255, 0), thickness=-1)
     cv2.imshow(img_name, image)
     cv2.waitKey(0)
 
+import albumentations as A
+import random
 
-def visualize_dataset(dataset_path):
+def visualize_dataset(dataset_path, stixels100=False):
+
+    transform = A.Compose(
+        [
+            A.Normalize(),
+            A.Resize(height=400, width=800),
+            A.HorizontalFlip(p=0.5),
+        ],
+        keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
+    )
+
     dataset = StixelsDataset(os.path.join(dataset_path, 'annotations.txt'), dataset_path)
     annotations = dataset.annotations
     for i, (img_name, tar_name) in enumerate(annotations):
-        if i % 10 != 0:
+        if i % 50 != 0:
             continue
         image_path = os.path.join(dataset.images_path, img_name)
         target_path = os.path.join(dataset.targets_path, tar_name)
         image = cv2.imread(image_path)
+
         points = dataset._read_target_file(target_path)
-        draw_stixels(image, points, img_name)
+        transformed = transform(image=image, keypoints=points)
+        #image = transformed['image']
+        #points = transformed['keypoints']
+        # vis_keypoints(transformed['image'], transformed['keypoints'])
+        # image = transform(image)
+        # points = target_transform(points)
+        draw_stixels(image, points, img_name, stixels100)
 
 
 
@@ -449,13 +515,13 @@ def visualize_dataset(dataset_path):
 
 if __name__ == '__main__':
     #create_dataset('source_data', remove_source_images=False)
-    #create_dataset_harder('source_data/2011_09_26/46/images/0000000000.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_26/46/lidar/0000000000.bin')
+    #create_dataset_harder('source_data/2011_09_28/43/images/0000000040.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_28/43/lidar/0000000040.bin')
     # image = cv2.imread('source_data/2011_09_26/46/images/0000000020.png')
     # calib = read_calib_file('source_data/2011_09_26/calibration')
     # lidar_pc = load_pc_velo_scan('source_data/2011_09_26/46/lidar/0000000020.bin')
     # create_data_sample(image, calib, lidar_pc, 'jofff')
-    #create_dataset_annotations('../dataset')
-    visualize_dataset('../dataset')
+    create_dataset_annotations('dataset')
+    #visualize_dataset('dataset', True)
 
     #create_dataset_old()
     # t1 = time.time()

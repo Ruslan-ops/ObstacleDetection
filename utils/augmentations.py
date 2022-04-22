@@ -427,7 +427,14 @@ class StixelAugmentation(object):
             ConvertFromInts(),
             #Expand(self.mean),
             #RandomMirror(),
-            #Resize(self.size),
+            Resize(self.size),
+            SubtractMeans(self.mean)
+        ])
+        self.target_augument = Compose([
+            ConvertFromInts(),
+            #Expand(self.mean),
+            #RandomMirror(),
+            Resize(self.size),
             SubtractMeans(self.mean)
         ])
 

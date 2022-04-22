@@ -10,13 +10,14 @@ from pathlib import Path
 
 
 class StixelsDataset(Dataset):
-    def __init__(self, annotations_path, dataset_path, transform=None):
+    def __init__(self, annotations_path, dataset_path, transform=None, target_transform=None):
         self.annotations = self._read_annotations_txt(annotations_path)
-        self.dataset_path = Path(annotations_path).parent.absolute()
-        self.images_path = os.path.join(dataset_path, 'images')
-        self.targets_path = os.path.join(dataset_path, 'targets')
-        self.dataset_parent_path = self.dataset_path.parent.absolute()
+        self.dataset_path = Path(annotations_path).parent
+        self.images_path = os.path.join(self.dataset_path, 'images/')
+        self.targets_path = os.path.join(self.dataset_path, 'targets/')
+        self.dataset_parent_path = self.dataset_path.parent
         self.transform = transform
+        self.targets_transform = target_transform
 
     def __len__(self):
         return len(self.annotations)
@@ -48,7 +49,7 @@ class StixelsDataset(Dataset):
             if op > targets[index]:
                 targets[index] = op
                 have_target[index] = 1
-        targets = np.clip(targets, 0.51, 49.49)
+        #targets = np.clip(targets, 0.51, 49.49)
         return have_target, targets
 
     def _read_target_file(self, target_path):

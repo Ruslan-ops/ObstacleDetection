@@ -109,6 +109,8 @@ class StixelNet(nn.Module):
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
+            n_x_max = x.detach().numpy().max()
+            n_x_min = x.detach().numpy().min()
 
         feature = self.L2Norm(x)
         sources.append(feature)
@@ -173,7 +175,7 @@ class StixelNet(nn.Module):
 
 # This function is derived from torchvision VGG make_layers()
 # https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
-def vgg(cfg, i, batch_norm=False):
+def vgg(cfg, i, batch_norm=True):
     layers = []
     in_channels = i
     for v in cfg:
@@ -218,15 +220,11 @@ def multibox(vgg, extra_layers, cfg, num_classes):
     conf_layers = []
     vgg_source = [24, -2]
     for k, v in enumerate(vgg_source):
-        loc_layers += [nn.Conv2d(vgg[v].out_channels,
-                                 cfg[k] * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(vgg[v].out_channels,
-                        cfg[k] * num_classes, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(vgg[v].out_channels, cfg[k] * num_classes, kernel_size=3, padding=1)]
     for k, v in enumerate(extra_layers[1::2], 2):
-        loc_layers += [nn.Conv2d(v.out_channels, cfg[k]
-                                 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(v.out_channels, cfg[k]
-                                  * num_classes, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(v.out_channels, cfg[k] * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(v.out_channels, cfg[k] * num_classes, kernel_size=3, padding=1)]
     return vgg, extra_layers, (loc_layers, conf_layers)
 
 

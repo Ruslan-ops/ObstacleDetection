@@ -75,12 +75,14 @@ def stixel_train():
     net.train()
     printfrq = 1
     step = 0
-    dataset = StixelsDataset(args.basepath_s, args.gt_path_s, StixelAugmentation(size=ssd_dim, mean=means))
+    transform, _ = StixelAugmentation(size=ssd_dim, mean=means)
+    dataset = StixelsDataset(args.basepath_s, args.gt_path_s, transform)
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
-                                  shuffle=False, pin_memory=not torch.cuda.is_available())
+                                  shuffle=True, pin_memory=not torch.cuda.is_available())
     lossfunction = StixelLoss()
     minloss = 9999
     min_sum_loss = 9999
+    print('train started')
 
     for epoch in range(100):
         if epoch % 10 == 0:
@@ -116,12 +118,12 @@ def stixel_train():
             avgloss = avgloss + loss.data.item()
             current_sum_loss = current_sum_loss + loss.data.item()
 
+        current_sum_loss = current_sum_loss / (i + 1)
         print("Epoch: %d batch: %d lr: %.6f loss: %.6f" % (epoch, i, lr, current_sum_loss))
 
         if current_sum_loss < min_sum_loss:
             min_sum_loss = current_sum_loss
             torch.save(net.state_dict(), savename + ('_%d_%.6f.pt' % (epoch, current_sum_loss)))
-
 
     torch.save(net.state_dict(), savename + ('_%d.pt' % epoch))
 
