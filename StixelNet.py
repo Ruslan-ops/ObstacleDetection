@@ -175,7 +175,7 @@ class StixelNet(nn.Module):
 
 # This function is derived from torchvision VGG make_layers()
 # https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
-def vgg(cfg, i, batch_norm=True):
+def vgg(cfg, i, batch_norm=False):
     layers = []
     in_channels = i
     for v in cfg:

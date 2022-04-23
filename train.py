@@ -18,7 +18,7 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=4, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=2e-1, type=float, help='initial learning rate')
+parser.add_argument('--lr', '--learning-rate', default=2e-2, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.9, type=float, help='Gamma update for SGD')
@@ -69,14 +69,85 @@ net = net.to(device)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=args.momentum, weight_decay=args.weight_decay)
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
 
+
+def train_one_step(model, data, optimizer):
+    optimizer.zero_grad()
+    (images, havetargets, targets) = data
+    images = Variable(images).to(device)
+    havetargets = Variable(havetargets).to(device)
+    targets = Variable(targets).to(device)
+    _, stixel = model(images)
+    loss = StixelLoss()(stixel, havetargets, targets)
+    loss.backward()
+    optimizer.step()
+    return loss.data.item()
+
+def train_one_epoch(model, data_loader, optimizer, scheduler):
+    model.train()
+    total_loss = 0
+    for batch_index,  data in enumerate(data_loader):
+        loss = train_one_step(model, data, optimizer)
+        scheduler.step()
+        total_loss += loss
+    return total_loss
+
+def validate_one_step(model, data):
+    (images, havetargets, targets) = data
+    images = Variable(images).to(device)
+    havetargets = Variable(havetargets).to(device)
+    targets = Variable(targets).to(device)
+    _, stixel = model(images)
+    loss = StixelLoss()(stixel, havetargets, targets)
+    return loss.data.item()
+
+def validate_one_epoch(model, data_loader):
+    model.eval()
+    total_loss = 0
+    for batch_index, data in enumerate(data_loader):
+        with torch.no_grad():
+            loss = validate_one_step(model, data)
+        total_loss += loss
+    return total_loss
 
 def stixel_train():
+    augmentation = StixelAugmentation(size=ssd_dim)
+    dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
+    data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
+                                  shuffle=True, pin_memory=not torch.cuda.is_available())
+
+    min_val_loss = 9999
+    print('train started')
+    model = net
+
+    log_path = 'log.txt'
+    with open(log_path, 'w') as log:
+        for epoch in range(100):
+            total_train_loss = train_one_epoch(model, data_loader, optimizer, scheduler)
+            total_val_loss = validate_one_epoch(model, data_loader)
+
+            avg_train_loss = total_train_loss / len(data_loader)
+            avg_val_loss = total_val_loss / len(data_loader)
+
+            print("Epoch: %d lr: %.6f train_loss: %.6f val_loss: %.6f" % (epoch, optimizer.param_groups[0]['lr'], avg_train_loss, avg_val_loss))
+
+            model_name = savename + ('_%d_%.6f.pt' % (epoch, avg_val_loss))
+            if avg_val_loss < min_val_loss:
+                min_val_loss = avg_val_loss
+                torch.save(net.state_dict(), model_name)
+
+            info = f'{epoch}\t{avg_train_loss}\t{avg_val_loss}'
+            log.write(info + '\n')
+
+
+
+def stixel_train_OOOOld():
     net.train()
     printfrq = 1
     step = 0
-    transform, _ = StixelAugmentation(size=ssd_dim, mean=means)
-    dataset = StixelsDataset(args.basepath_s, args.gt_path_s, transform)
+    augmentation = StixelAugmentation(size=ssd_dim)
+    dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=True, pin_memory=not torch.cuda.is_available())
     lossfunction = StixelLoss()
@@ -117,13 +188,21 @@ def stixel_train():
             optimizer.step()
             avgloss = avgloss + loss.data.item()
             current_sum_loss = current_sum_loss + loss.data.item()
+            print(f'finished {i + 1}/{len(data_loader)}')
 
         current_sum_loss = current_sum_loss / (i + 1)
         print("Epoch: %d batch: %d lr: %.6f loss: %.6f" % (epoch, i, lr, current_sum_loss))
 
+        model_name = savename + ('_%d_%.6f.pt' % (epoch, current_sum_loss))
         if current_sum_loss < min_sum_loss:
             min_sum_loss = current_sum_loss
-            torch.save(net.state_dict(), savename + ('_%d_%.6f.pt' % (epoch, current_sum_loss)))
+            torch.save(net.state_dict(), model_name)
+
+        log_path = 'log.txt'
+        with open(log_path, 'w') as log:
+            info = f'{epoch}\t{current_sum_loss}'
+            log.write(info + '\n')
+
 
     torch.save(net.state_dict(), savename + ('_%d.pt' % epoch))
 

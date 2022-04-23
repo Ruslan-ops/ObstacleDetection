@@ -361,10 +361,6 @@ def create_dataset_for_date(date_path, out_data_path, sample_full_name, remove_s
 
 
 def create_dataset_for_series(series_path, calib, out_data_path, sample_full_name, remove_source_images=False):
-    series_name = series_path[-2:]
-    if series_name != '43':
-        return
-
     print(f'---creating for series {series_path}')
     source_images_path = os.path.join(series_path, 'images')
     source_lidar_path = os.path.join(series_path, 'lidar')
@@ -407,7 +403,7 @@ def create_dataset_for_series(series_path, calib, out_data_path, sample_full_nam
 
 
 def create_dataset(source_data_path, remove_source_images=False):
-    out_data_path = 'dataset'
+    out_data_path = '../dataset'
     kitti_dates = os.fsencode(source_data_path)
     print(f'-dataset creation started from {source_data_path}')
     for date_dir in os.listdir(kitti_dates):
@@ -459,7 +455,7 @@ if __name__ == '__main__':
     # calib = read_calib_file('source_data/2011_09_26/calibration')
     # lidar_pc = load_pc_velo_scan('source_data/2011_09_26/46/lidar/0000000020.bin')
     # create_data_sample(image, calib, lidar_pc, 'jofff')
-    create_dataset_annotations('dataset')
+    create_dataset_annotations('../dataset')
 
     # create_dataset_old()
     # t1 = time.time()

@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import types
 from numpy import random
+import albumentations as A
+
 
 
 def intersect(box_a, box_b):
@@ -421,6 +423,21 @@ class SSDAugmentation(object):
 
 class StixelAugmentation(object):
     def __init__(self, size=(300,300), mean=(104, 117, 123)):
+        self.transformations_list = [
+                A.Resize(height=size[1], width=size[0]),
+                A.HorizontalFlip(p=0.5),
+                A.GaussNoise(var_limit=(10.0, 50.0), mean=0, per_channel=True, always_apply=False, p=0.5),
+                A.RandomBrightnessContrast(p=0.5),
+                A.Normalize()
+        ]
+
+        self.transform = A.Compose(self.transformations_list)
+
+        self.target_transform = A.Compose(
+            self.transformations_list,
+            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
+        )
+
         self.mean = mean
         self.size = size
         self.augment = Compose([
@@ -439,4 +456,5 @@ class StixelAugmentation(object):
         ])
 
     def __call__(self, img, boxes, labels):
-        return self.augment(img, boxes, labels)
+        return self.transform, self.target_transform
+        #return self.augment(img, boxes, labels)

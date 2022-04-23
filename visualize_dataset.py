@@ -5,9 +5,11 @@ from StixelsDataset import *
 def visualize_dataset(dataset_path, stixels100=False):
     transform = A.Compose(
         [
-            A.Normalize(),
             A.Resize(height=400, width=800),
             A.HorizontalFlip(p=0.5),
+            A.GaussNoise(var_limit=(10.0, 50.0), mean=0, per_channel=True, always_apply=False, p=0.5),
+            A.RandomBrightnessContrast(p=0.5),
+            A.Normalize(),
         ],
         keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
     )
@@ -23,8 +25,8 @@ def visualize_dataset(dataset_path, stixels100=False):
 
         points = dataset._read_target_file(target_path)
         transformed = transform(image=image, keypoints=points)
-        # image = transformed['image']
-        # points = transformed['keypoints']
+        image = transformed['image']
+        points = transformed['keypoints']
         # vis_keypoints(transformed['image'], transformed['keypoints'])
         # image = transform(image)
         # points = target_transform(points)
@@ -59,5 +61,5 @@ def draw_stixels(image, points, img_name, stixels100):
     cv2.waitKey(0)
 
 
-visualize_dataset('dataset_creation/dataset/', True)
+visualize_dataset('dataset/', True)
 
