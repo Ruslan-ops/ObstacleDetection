@@ -109,8 +109,6 @@ class StixelNet(nn.Module):
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
-            n_x_max = x.detach().numpy().max()
-            n_x_min = x.detach().numpy().min()
 
         feature = self.L2Norm(x)
         sources.append(feature)
