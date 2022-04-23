@@ -114,8 +114,15 @@ def validate_one_epoch(model, data_loader):
 def stixel_train():
     augmentation = StixelAugmentation(size=ssd_dim)
     dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
-    data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+    train_data_loader = data.DataLoader(train_dataset, batch_size, num_workers=args.num_workers,
+                                      shuffle=True, pin_memory=not torch.cuda.is_available())
+    val_data_loader = data.DataLoader(val_dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=True, pin_memory=not torch.cuda.is_available())
+
+
 
     min_val_loss = 9999
     print('train started')
@@ -124,11 +131,11 @@ def stixel_train():
     log_path = 'log.txt'
     with open(log_path, 'w') as log:
         for epoch in range(100):
-            total_train_loss = train_one_epoch(model, data_loader, optimizer, scheduler)
-            total_val_loss = validate_one_epoch(model, data_loader)
+            total_train_loss = train_one_epoch(model, train_data_loader, optimizer, scheduler)
+            total_val_loss = validate_one_epoch(model, val_data_loader)
 
-            avg_train_loss = total_train_loss / len(data_loader)
-            avg_val_loss = total_val_loss / len(data_loader)
+            avg_train_loss = total_train_loss / len(train_data_loader)
+            avg_val_loss = total_val_loss / len(val_data_loader)
 
             print("Epoch: %d lr: %.6f train_loss: %.6f val_loss: %.6f" % (epoch, optimizer.param_groups[0]['lr'], avg_train_loss, avg_val_loss))
 
