@@ -25,8 +25,8 @@ def visualize_dataset(dataset_path, stixels100=False):
 
         points = dataset._read_target_file(target_path)
         transformed = transform(image=image, keypoints=points)
-        image = transformed['image']
-        points = transformed['keypoints']
+        #image = transformed['image']
+        #points = transformed['keypoints']
         # vis_keypoints(transformed['image'], transformed['keypoints'])
         # image = transform(image)
         # points = target_transform(points)

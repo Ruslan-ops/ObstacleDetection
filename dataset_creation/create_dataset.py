@@ -178,7 +178,7 @@ def create_data_sample(image, calib, lidar_pc, out_data_path):
     img_height, img_width, img_channel = image.shape
     lidar_pc = remove_high_points(lidar_pc, -0.8)
     lidar_pc, plane_model = remove_ground(lidar_pc)
-    lidar_pc = remove_far_points(lidar_pc, 25)
+    lidar_pc = remove_far_points(lidar_pc, 30)
 
     lidar_pc = add_projected_points(plane_model, lidar_pc)
 
@@ -449,13 +449,13 @@ def create_dataset_annotations(dataset_path):
 
 
 if __name__ == '__main__':
-    # create_dataset('source_data', remove_source_images=False)
-    # create_dataset_harder('source_data/2011_09_28/43/images/0000000040.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_28/43/lidar/0000000040.bin')
+    create_dataset('source_data', remove_source_images=False)
+    #create_dataset_harder('source_data/2011_09_26/95/images/0000000040.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_26/95/lidar/0000000040.bin')
     # image = cv2.imread('source_data/2011_09_26/46/images/0000000020.png')
     # calib = read_calib_file('source_data/2011_09_26/calibration')
     # lidar_pc = load_pc_velo_scan('source_data/2011_09_26/46/lidar/0000000020.bin')
     # create_data_sample(image, calib, lidar_pc, 'jofff')
-    create_dataset_annotations('../dataset')
+    #create_dataset_annotations('../dataset')
 
     # create_dataset_old()
     # t1 = time.time()

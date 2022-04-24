@@ -52,9 +52,9 @@ def weights_init(m):
 
 if args.resume is None:
     net = build_net('train', ssd_dim, num_classes)
-    vgg_weights = torch.load('weights/vgg16_reducedfc.pth')
-    print('Loading base network...')
-    net.vgg.load_state_dict(vgg_weights)
+    #vgg_weights = torch.load('weights/vgg16_reducedfc.pth')
+    #print('Loading base network...')
+    #net.vgg.load_state_dict(vgg_weights)
     net.extras.apply(weights_init)
     net.loc.apply(weights_init)
     net.conf.apply(weights_init)
