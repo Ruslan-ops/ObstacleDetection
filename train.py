@@ -89,8 +89,8 @@ def train_one_epoch(model, data_loader, optimizer, scheduler):
     total_loss = 0
     for batch_index,  data in enumerate(data_loader):
         loss = train_one_step(model, data, optimizer)
-        scheduler.step()
         total_loss += loss
+    scheduler.step()
     return total_loss
 
 def validate_one_step(model, data):
