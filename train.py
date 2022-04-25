@@ -16,9 +16,9 @@ import settings
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=4, type=int, help='Batch size for training')
+parser.add_argument('--batch_size', default=16, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=2e-2, type=float, help='initial learning rate')
+parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.9, type=float, help='Gamma update for SGD')
@@ -61,7 +61,7 @@ if args.resume is None:
 else:
     net = torch.load(args.resume)
 
-savename = 'weights/kitti_%f_%.3f' % (args.lr, args.gamma)
+savename = 'weights/kitti_'
 
 cudnnz.benchmark = True
 
@@ -102,6 +102,7 @@ def validate_one_step(model, data):
     loss = StixelLoss()(stixel, havetargets, targets)
     return loss.data.item()
 
+
 def validate_one_epoch(model, data_loader):
     model.eval()
     total_loss = 0
@@ -111,10 +112,40 @@ def validate_one_epoch(model, data_loader):
         total_loss += loss
     return total_loss
 
+
+def _get_loss_from_model_name(model_name, name_start):
+    model_name = Path(model_name).stem
+    model_name = model_name[len(name_start):]
+    loss_start_index = model_name.find('_') + 1
+    loss_str = model_name[loss_start_index:]
+    return float(loss_str)
+
+def save_model_and_delete_old(epoch, avg_val_loss, max_models_num=3):
+    full_model_name = savename + ('%d_%.6f.pt' % (epoch, avg_val_loss))
+    torch.save(net.state_dict(), full_model_name)
+
+    weights_path = Path(full_model_name).parent
+    weights_dir = os.fsencode(weights_path)
+    models_list = []
+    name_start = 'kitti_'
+    for saved_model in os.listdir(weights_dir):
+        model_name = os.fsdecode(saved_model)
+        if model_name.startswith(name_start):
+            loss = _get_loss_from_model_name(model_name, name_start)
+            models_list.append((loss, os.path.join(weights_path, model_name)))
+
+    if len(models_list) > max_models_num:
+        models_list.sort(key=lambda i: i[0], reverse=False)
+        while len(models_list) > max_models_num:
+            delete_name = models_list.pop()[1]
+            os.remove(delete_name)
+
+
+
 def stixel_train():
     augmentation = StixelAugmentation(size=ssd_dim)
     dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
-    train_size = int(0.8 * len(dataset))
+    train_size = int(0.75 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
     train_data_loader = data.DataLoader(train_dataset, batch_size, num_workers=args.num_workers,
@@ -139,10 +170,9 @@ def stixel_train():
 
             print("Epoch: %d lr: %.6f train_loss: %.6f val_loss: %.6f" % (epoch, optimizer.param_groups[0]['lr'], avg_train_loss, avg_val_loss))
 
-            model_name = savename + ('_%d_%.6f.pt' % (epoch, avg_val_loss))
             if avg_val_loss < min_val_loss:
                 min_val_loss = avg_val_loss
-                torch.save(net.state_dict(), model_name)
+                save_model_and_delete_old(epoch, avg_val_loss, max_models_num=3)
 
             info = f'{epoch}\t{avg_train_loss}\t{avg_val_loss}'
             log.write(info + '\n')

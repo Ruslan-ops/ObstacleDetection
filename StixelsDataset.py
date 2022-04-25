@@ -36,7 +36,7 @@ class StixelsDataset(Dataset):
     def _get_target(self, target_path, image):
         #h, w = image.shape[0], image.shape[1]
         stixel_columns_amount = settings.STIXEL_COLOMNS_AMOUNT
-        bins_amount = settings.DISTANCE_BINS_AMOUNT
+        bins_amount = settings.BINS_AMOUNT
         pointset = self._read_target_file(target_path)
         transformed = self.targets_transform(image=image, keypoints=pointset)
         image, pointset = transformed['image'], transformed['keypoints']
@@ -71,3 +71,11 @@ class StixelsDataset(Dataset):
                 index, image_path, target_path = line_info[0], line_info[1], line_info[2].strip()
                 annotations.append((image_path, target_path))
         return annotations
+
+    def get_original_image(self, index):
+        img_path = os.path.join(self.images_path, self.annotations[index][0])
+        image = cv2.imread(img_path)
+        image = image[:, :, (2, 1, 0)]
+        image = torch.from_numpy(image).permute(2, 0, 1)
+
+        return image
