@@ -423,7 +423,7 @@ class SSDAugmentation(object):
 
 class StixelAugmentation(object):
     def __init__(self, size=(300,300), mean=(104, 117, 123)):
-        self.transformations_list = [
+        self.train_transformations_list = [
                 A.Resize(height=size[1], width=size[0]),
                 A.HorizontalFlip(p=0.5),
                 A.GaussNoise(var_limit=(10.0, 50.0), mean=0, per_channel=True, always_apply=False, p=0.5),
@@ -431,10 +431,22 @@ class StixelAugmentation(object):
                 A.Normalize()
         ]
 
-        self.transform = A.Compose(self.transformations_list)
+        self.val_transformations_list = [
+                A.Resize(height=size[1], width=size[0]),
+                A.Normalize()
+        ]
 
-        self.target_transform = A.Compose(
-            self.transformations_list,
+        self.train_transform = A.Compose(self.train_transformations_list)
+
+        self.train_target_transform = A.Compose(
+            self.train_transformations_list,
+            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
+        )
+
+        self.val_transform = A.Compose(self.val_transformations_list)
+
+        self.val_target_transform = A.Compose(
+            self.val_transformations_list,
             keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
         )
 
@@ -455,6 +467,9 @@ class StixelAugmentation(object):
             SubtractMeans(self.mean)
         ])
 
-    def __call__(self, img, boxes, labels):
-        return self.transform, self.target_transform
+    def __call__(self, img, boxes, labels, phase='train'):
+        if phase == 'train':
+            return self.train_transform, self.train_target_transform
+        else:
+            return self.val_transform, self.val_target_transform
         #return self.augment(img, boxes, labels)

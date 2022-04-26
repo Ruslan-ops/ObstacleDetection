@@ -18,7 +18,7 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=16, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float, help='initial learning rate')
+parser.add_argument('--lr', '--learning-rate', default=0.005, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.9, type=float, help='Gamma update for SGD')
@@ -52,6 +52,8 @@ def weights_init(m):
 
 if args.resume is None:
     net = build_net('train', ssd_dim, num_classes)
+    #net.load_state_dict(torch.load('weights/kitti_777_2.011793.pt', map_location=torch.device(device)))
+
     #vgg_weights = torch.load('weights/vgg16_reducedfc.pth')
     #print('Loading base network...')
     #net.vgg.load_state_dict(vgg_weights)
@@ -69,7 +71,7 @@ net = net.to(device)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=args.momentum, weight_decay=args.weight_decay)
-scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
 
 
 def train_one_step(model, data, optimizer):
@@ -90,7 +92,6 @@ def train_one_epoch(model, data_loader, optimizer, scheduler):
     for batch_index,  data in enumerate(data_loader):
         loss = train_one_step(model, data, optimizer)
         total_loss += loss
-    scheduler.step()
     return total_loss
 
 def validate_one_step(model, data):
@@ -144,10 +145,11 @@ def save_model_and_delete_old(epoch, avg_val_loss, max_models_num=3):
 
 def stixel_train():
     augmentation = StixelAugmentation(size=ssd_dim)
-    dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
+    dataset = StixelsDataset(args.basepath_s, augmentation.train_target_transform)
     train_size = int(0.75 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+    val_dataset.targets_transform = augmentation.val_target_transform
     train_data_loader = data.DataLoader(train_dataset, batch_size, num_workers=args.num_workers,
                                       shuffle=True, pin_memory=not torch.cuda.is_available())
     val_data_loader = data.DataLoader(val_dataset, batch_size, num_workers=args.num_workers,
@@ -161,18 +163,20 @@ def stixel_train():
 
     log_path = 'log.txt'
     with open(log_path, 'w') as log:
-        for epoch in range(100):
+        for epoch in range(10000):
             total_train_loss = train_one_epoch(model, train_data_loader, optimizer, scheduler)
             total_val_loss = validate_one_epoch(model, val_data_loader)
+            if epoch % 2 == 0:
+                scheduler.step()
 
             avg_train_loss = total_train_loss / len(train_data_loader)
             avg_val_loss = total_val_loss / len(val_data_loader)
 
             print("Epoch: %d lr: %.6f train_loss: %.6f val_loss: %.6f" % (epoch, optimizer.param_groups[0]['lr'], avg_train_loss, avg_val_loss))
 
-            if avg_val_loss < min_val_loss:
-                min_val_loss = avg_val_loss
-                save_model_and_delete_old(epoch, avg_val_loss, max_models_num=3)
+            if total_train_loss < min_val_loss:
+                min_val_loss = total_train_loss
+                save_model_and_delete_old(epoch, total_train_loss, max_models_num=5)
 
             info = f'{epoch}\t{avg_train_loss}\t{avg_val_loss}'
             log.write(info + '\n')
@@ -184,7 +188,7 @@ def stixel_train_OOOOld():
     printfrq = 1
     step = 0
     augmentation = StixelAugmentation(size=ssd_dim)
-    dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
+    dataset = StixelsDataset(args.basepath_s, augmentation.train_transform, augmentation.train_target_transform)
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=True, pin_memory=not torch.cuda.is_available())
     lossfunction = StixelLoss()

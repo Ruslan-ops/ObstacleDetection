@@ -56,7 +56,7 @@ def draw_stixels(image, points, img_name, stixels100):
         if y >= 0:
             x = int(x)
             y = int(y)
-            cv2.circle(image, (x, y), 5, color=(0, 255, 0), thickness=-1)
+            cv2.circle(image, (x, y), 2, color=(0, 255, 0), thickness=-1)
     cv2.imshow(img_name, image)
     cv2.waitKey(0)
 

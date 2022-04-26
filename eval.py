@@ -36,10 +36,12 @@ ssd_dim = (800,370)
 def stixel_test(dataset,model):
     num_images = len(dataset)
     for i in range(num_images):
+        if i % 10 != 0:
+            continue
         im, have_targ, targ = dataset.__getitem__(i)
         oimg = dataset.get_original_image(i)
-        w, h = oimg.shape[1], oimg.shape[0]
-        x = Variable(im).to(device)
+        h, w, c = oimg.shape
+        x = Variable(im.unsqueeze(0)).to(device)
         _,stixel = model(x)
         predict=stixel.data.cpu().numpy()
         predict = predict[0]
@@ -47,11 +49,13 @@ def stixel_test(dataset,model):
         for x,py in enumerate(predict):
             x0=int(x*w/settings.STIXEL_COLOMNS_AMOUNT)
             x1=int((x+1)*w/settings.STIXEL_COLOMNS_AMOUNT)
-            x = x0 + x1// 2
+            x = (x0 + x1)// 2
             y=int((py+0.5) * h / settings.BINS_AMOUNT)
             cv2.circle(oimg,(x,y),2,(0,255,0),-1)
         #cv2.imwrite(os.path.join(args.outpath,'%d.png'%i),oimg)
         print("finish %d/%d"%(i,num_images))
+        cv2.imshow('aaa', oimg)
+        cv2.waitKey(0)
 
 
 
@@ -62,7 +66,7 @@ if __name__ == '__main__':
     # load net
     num_classes = 9 + 1 # +1 background
     net = build_net('test', ssd_dim, num_classes)
-    net.load_state_dict(torch.load(args.model))
+    net.load_state_dict(torch.load(args.model, map_location=torch.device(device)))
     # if os.path.exists(args.model):
     #     a = 0
     #model_weights = torch.load(args.model)
@@ -73,7 +77,7 @@ if __name__ == '__main__':
     net.eval()
     print('Finished loading model!')
     augmentation = StixelAugmentation(size=ssd_dim)
-    dataset = StixelsDataset(args.basepath_s, augmentation.transform, augmentation.target_transform)
+    dataset = StixelsDataset(args.basepath, augmentation.train_transform, augmentation.train_target_transform)
     net = net.to(device)
     cudnn.benchmark = torch.cuda.is_available()
     stixel_test(dataset,net)

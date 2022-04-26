@@ -27,4 +27,5 @@ class StixelLoss(nn.Module):
         p = p.view(havetarget.size(0), havetarget.size(1))
         loss = -torch.log(p) * havetarget
         loss = torch.sum(loss) / torch.sum(havetarget)
+
         return loss

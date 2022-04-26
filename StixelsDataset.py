@@ -10,13 +10,13 @@ from pathlib import Path
 
 
 class StixelsDataset(Dataset):
-    def __init__(self, annotations_path, transform=None, target_transform=None):
+    def __init__(self, annotations_path, target_transform=None):
         self.annotations = self._read_annotations_txt(annotations_path)
         self.dataset_path = Path(annotations_path).parent
         self.images_path = os.path.join(self.dataset_path, 'images/')
         self.targets_path = os.path.join(self.dataset_path, 'targets/')
         self.dataset_parent_path = self.dataset_path.parent
-        self.transform = transform
+        #self.transform = transform
         self.targets_transform = target_transform
 
     def __len__(self):
@@ -75,7 +75,5 @@ class StixelsDataset(Dataset):
     def get_original_image(self, index):
         img_path = os.path.join(self.images_path, self.annotations[index][0])
         image = cv2.imread(img_path)
-        image = image[:, :, (2, 1, 0)]
-        image = torch.from_numpy(image).permute(2, 0, 1)
 
         return image
