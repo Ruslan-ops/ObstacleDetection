@@ -20,7 +20,7 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=16, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=0.005, type=float, help='initial learning rate')
+parser.add_argument('--lr', '--learning-rate', default=0.05, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.9, type=float, help='Gamma update for SGD')
@@ -81,7 +81,7 @@ net = net.to(device)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=args.momentum, weight_decay=args.weight_decay)
-scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
 
 
 def train_one_step(model, data, optimizer):
