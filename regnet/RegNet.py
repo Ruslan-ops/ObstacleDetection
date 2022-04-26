@@ -19,13 +19,22 @@ class Head(nn.Module):  # From figure 3
 
     def __init__(self, num_channels, num_classes):
         super(Head, self).__init__()
-        self.pool = nn.AdaptiveAvgPool2d(output_size=1)
-        self.fc = nn.Linear(num_channels, num_classes)
+        self.pool = nn.AdaptiveAvgPool2d(output_size=(100, 1))
+
+        self.stixel = nn.Sequential(
+            nn.Conv2d(in_channels=num_channels, out_channels=50, kernel_size=1),
+        )
+        self.softmax = nn.Softmax()
+
+        #self.fc = nn.Linear(100*num_channels, num_classes)
 
     def forward(self, x):
         x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        #x = x.view(x.size(0), -1)
+        x = self.stixel(x)
+        x = self.softmax(x)
+        x = x.view(x.shape[:3], -1).permute(0, 2, 1)
+        #x = self.fc(x)
         return x
 
 

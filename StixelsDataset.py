@@ -20,7 +20,7 @@ class StixelsDataset(Dataset):
         self.targets_transform = target_transform
 
     def __len__(self):
-        return len(self.annotations)
+        return 4 #len(self.annotations)
 
     def __getitem__(self, index):
         img_path = os.path.join(self.images_path, self.annotations[index][0])

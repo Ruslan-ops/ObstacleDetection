@@ -12,6 +12,7 @@ from utils.augmentations import SSDAugmentation, StixelAugmentation
 from layers.modules import MultiBoxLoss, StixelLoss
 from StixelNet import build_net
 from callbacks import *
+from regnet.RegNet import RegNetY
 import numpy as np
 import settings
 import time
@@ -52,15 +53,23 @@ def weights_init(m):
 
 
 if args.resume is None:
-    net = build_net('train', ssd_dim, num_classes)
+    w0 = 24
+    wa = 36
+    wm = 2.5
+    b = 1
+    d = 13
+    g = 8
+    s = 2
+    se = 8
+    net = RegNetY(initial_width=w0, slope=wa, quantized_param=wm, network_depth=d, bottleneck_ratio=b, group_width=g, stride=s, se_ratio=se) #build_net('train', ssd_dim, num_classes)
     #net.load_state_dict(torch.load('weights/kitti_777_2.011793.pt', map_location=torch.device(device)))
 
     #vgg_weights = torch.load('weights/vgg16_reducedfc.pth')
     #print('Loading base network...')
     #net.vgg.load_state_dict(vgg_weights)
-    net.extras.apply(weights_init)
-    net.loc.apply(weights_init)
-    net.conf.apply(weights_init)
+    # net.extras.apply(weights_init)
+    # net.loc.apply(weights_init)
+    # net.conf.apply(weights_init)
 else:
     net = torch.load(args.resume)
 
@@ -81,7 +90,7 @@ def train_one_step(model, data, optimizer):
     images = Variable(images).to(device)
     havetargets = Variable(havetargets).to(device)
     targets = Variable(targets).to(device)
-    _, stixel = model(images)
+    stixel = model(images)
     loss = StixelLoss()(stixel, havetargets, targets)
     loss.backward()
     optimizer.step()
@@ -100,7 +109,7 @@ def validate_one_step(model, data):
     images = Variable(images).to(device)
     havetargets = Variable(havetargets).to(device)
     targets = Variable(targets).to(device)
-    _, stixel = model(images)
+    stixel = model(images)
     loss = StixelLoss()(stixel, havetargets, targets)
     return loss.data.item()
 

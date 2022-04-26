@@ -159,7 +159,7 @@ class StixelNet(nn.Module):
         #         conf.view(conf.size(0), -1, self.num_classes),
         #         self.priors
         #     )
-        return None,stixel_predict
+        return stixel_predict
 
     def train(self):
         self.phase='train'

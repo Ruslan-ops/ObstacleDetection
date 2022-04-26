@@ -51,7 +51,7 @@ def stixel_test(dataset,model):
             x1=int((x+1)*w/settings.STIXEL_COLOMNS_AMOUNT)
             x = (x0 + x1)// 2
             y=int((py+0.5) * h / settings.BINS_AMOUNT)
-            cv2.circle(oimg,(x,y),2,(0,255,0),-1)
+            cv2.circle(oimg,(x,y),3,(0,0,255),-1)
         #cv2.imwrite(os.path.join(args.outpath,'%d.png'%i),oimg)
         print("finish %d/%d"%(i,num_images))
         cv2.imshow('aaa', oimg)
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     net.eval()
     print('Finished loading model!')
     augmentation = StixelAugmentation(size=ssd_dim)
-    dataset = StixelsDataset(args.basepath, augmentation.train_transform, augmentation.train_target_transform)
+    dataset = StixelsDataset(args.basepath, augmentation.train_target_transform)
     net = net.to(device)
     cudnn.benchmark = torch.cuda.is_available()
     stixel_test(dataset,net)
