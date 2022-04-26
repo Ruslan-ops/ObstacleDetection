@@ -11,6 +11,7 @@ from StixelsDataset import *
 from utils.augmentations import SSDAugmentation, StixelAugmentation
 from layers.modules import MultiBoxLoss, StixelLoss
 from StixelNet import build_net
+from callbacks import *
 import numpy as np
 import settings
 import time
@@ -155,7 +156,7 @@ def stixel_train():
     val_data_loader = data.DataLoader(val_dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=True, pin_memory=not torch.cuda.is_available())
 
-
+    early_stop = EarlyStopping(patience=5, max_train_diff=0.25)
 
     min_val_loss = 9999
     print('train started')
@@ -180,6 +181,9 @@ def stixel_train():
 
             info = f'{epoch}\t{avg_train_loss}\t{avg_val_loss}'
             log.write(info + '\n')
+
+            if early_stop(avg_val_loss, avg_train_loss):
+                break
 
 
 

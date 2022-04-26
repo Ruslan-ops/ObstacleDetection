@@ -22,7 +22,7 @@ def read_log_file(log_path):
 
 
 def visualize_train_log():
-    log = read_log_file('important_logs/log1.txt')
+    log = read_log_file('important_logs/log.txt')
     train_loss = [item[0] for item in log]
     val_loss = [item[1] for item in log]
     num_epochs = len(log)
