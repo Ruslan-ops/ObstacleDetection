@@ -62,10 +62,12 @@ class XBlock(nn.Module): # From figure 4
         self.conv_block_1 = nn.Sequential(
             nn.Conv2d(in_channels, inter_channels, kernel_size=1, bias=False),
             nn.BatchNorm2d(inter_channels),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout(p=0.2)
         )
         self.conv_block_2 = nn.Sequential(
             nn.Conv2d(inter_channels, inter_channels, kernel_size=3, stride=stride, groups=groups, padding=1, bias=False),
+            nn.Dropout(p=0.2),
             nn.BatchNorm2d(inter_channels),
             nn.ReLU()
         )
@@ -75,6 +77,7 @@ class XBlock(nn.Module): # From figure 4
             self.se = nn.Sequential(
                 nn.AdaptiveAvgPool2d(output_size=1),
                 nn.Conv2d(inter_channels, se_channels, kernel_size=1, bias=True),
+                nn.Dropout(p=0.2),
                 nn.ReLU(),
                 nn.Conv2d(se_channels, inter_channels, kernel_size=1, bias=True),
                 nn.Sigmoid(),
@@ -84,6 +87,7 @@ class XBlock(nn.Module): # From figure 4
 
         self.conv_block_3 = nn.Sequential(
             nn.Conv2d(inter_channels, out_channels, kernel_size=1, bias=False),
+            nn.Dropout(p=0.2),
             nn.BatchNorm2d(out_channels)
         )
         if stride != 1 or in_channels != out_channels:
