@@ -1,4 +1,6 @@
 import os
+
+import cv2
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -13,12 +15,13 @@ from layers.modules import MultiBoxLoss, StixelLoss
 from StixelNet import build_net
 from callbacks import *
 from regnet.RegNet import RegNetY
+from StixelRegNet import *
 import numpy as np
 import settings
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=16, type=int, help='Batch size for training')
+parser.add_argument('--batch_size', default=4, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=0.05, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
@@ -60,8 +63,9 @@ if args.resume is None:
     d = 13
     g = 8
     s = 2
-    se = 8
-    net = RegNetY(initial_width=w0, slope=wa, quantized_param=wm, network_depth=d, bottleneck_ratio=b, group_width=g, stride=s, se_ratio=se) #build_net('train', ssd_dim, num_classes)
+    se = 4
+    net = create_stixel_model('regnet/trained_models/model.pt')
+    #net = RegNetY(initial_width=w0, slope=wa, quantized_param=wm, network_depth=d, bottleneck_ratio=b, group_width=g, stride=s, se_ratio=se) #build_net('train', ssd_dim, num_classes)
     #net.load_state_dict(torch.load('weights/kitti_777_2.011793.pt', map_location=torch.device(device)))
 
     #vgg_weights = torch.load('weights/vgg16_reducedfc.pth')
@@ -98,6 +102,7 @@ def train_one_step(model, data, optimizer):
 
 def train_one_epoch(model, data_loader, optimizer, scheduler):
     model.train()
+    data_loader.dataset.set_train_mode()
     total_loss = 0
     for batch_index,  data in enumerate(data_loader):
         loss = train_one_step(model, data, optimizer)
@@ -116,6 +121,7 @@ def validate_one_step(model, data):
 
 def validate_one_epoch(model, data_loader):
     model.eval()
+    data_loader.dataset.set_val_mode()
     total_loss = 0
     for batch_index, data in enumerate(data_loader):
         with torch.no_grad():
@@ -155,14 +161,17 @@ def save_model_and_delete_old(epoch, avg_val_loss, max_models_num=3):
 
 def stixel_train():
     augmentation = StixelAugmentation(size=ssd_dim)
-    dataset = StixelsDataset(args.basepath_s, augmentation.train_target_transform)
+    dataset = StixelsDataset(args.basepath_s, train_target_transform=augmentation.train_target_transform, val_target_transform=augmentation.val_target_transform)
     train_size = int(0.75 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
-    val_dataset.targets_transform = augmentation.val_target_transform
-    train_data_loader = data.DataLoader(train_dataset, batch_size, num_workers=args.num_workers,
+    # val_dataset.dataset.train_target_transform = augmentation.val_target_transform
+    # train_dataset.dataset.train_target_transform = augmentation.train_target_transform
+    # dataset.targets_transform = augmentation.train_target_transform
+    # cccc = augmentation.val_target_transform
+    train_data_loader = data.DataLoader(train_dataset.dataset, batch_size, num_workers=args.num_workers,
                                       shuffle=True, pin_memory=not torch.cuda.is_available())
-    val_data_loader = data.DataLoader(val_dataset, batch_size, num_workers=args.num_workers,
+    val_data_loader = data.DataLoader(val_dataset.dataset, batch_size, num_workers=args.num_workers,
                                   shuffle=True, pin_memory=not torch.cuda.is_available())
 
     early_stop = EarlyStopping(patience=5, max_train_diff=0.25)

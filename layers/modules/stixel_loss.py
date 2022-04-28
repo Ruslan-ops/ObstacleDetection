@@ -5,6 +5,8 @@ from torch.autograd import Variable
 import numpy as np
 import cv2
 import pickle
+import math
+
 
 class StixelLoss(nn.Module):
 
@@ -23,9 +25,10 @@ class StixelLoss(nn.Module):
             c_tensor = c_tensor.type(torch.cuda.LongTensor)
         fp = torch.gather(predect, 2, f_tensor)
         cp = torch.gather(predect, 2, c_tensor)
-        p = fp * (torch.ceil(target) - target) + cp * (target - torch.floor(target))
+        p = fp * (torch.ceil(target) - target) + cp * (target - torch.floor(target)) + 1e-12
         p = p.view(havetarget.size(0), havetarget.size(1))
         loss = -torch.log(p) * havetarget
         loss = torch.sum(loss) / torch.sum(havetarget)
-
+        if math.isnan(loss.data.item()):
+            a = 0
         return loss

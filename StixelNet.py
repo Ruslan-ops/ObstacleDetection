@@ -142,7 +142,8 @@ class StixelNet(nn.Module):
         for layer in self.stixelnet:
            feature=layer(feature)
 
-        stixel_predict=nn.functional.softmax(feature,1).permute(0,3,1,2).contiguous()
+        stixel_predict=nn.functional.softmax(feature,1)
+        stixel_predict = stixel_predict.permute(0,3,1,2).contiguous()
         stixel_predict=stixel_predict.view(-1,100,50)
 
 

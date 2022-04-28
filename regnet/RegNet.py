@@ -11,34 +11,44 @@ NUM_CLASSES = 1000
 EIGENVALUES = [[0.2175, 0.0188, 0.0045]]
 EIGENVECTORS = [[-0.5675, 0.7192, 0.4009], [-0.5808, -0.0045, -0.8140], [-0.5836, -0.6948, 0.4203]]
 
-
 import torch.nn as nn
 from math import sqrt
+
+
+class StixelHead(nn.Module):  # From figure 3
+    def __init__(self, num_channels, num_classes=50):
+        super(StixelHead, self).__init__()
+        self.pool = nn.AdaptiveAvgPool2d(output_size=(100, 1))
+
+        self.stixel = nn.Sequential(
+            nn.Conv2d(in_channels=num_channels, out_channels=num_classes, kernel_size=1),
+        )
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x = self.pool(x)
+        x = self.stixel(x)
+        x = x.view(x.shape[:3], -1).permute(0, 2, 1)
+        x = self.softmax(x)
+        return x
+
 
 class Head(nn.Module):  # From figure 3
 
     def __init__(self, num_channels, num_classes):
         super(Head, self).__init__()
-        self.pool = nn.AdaptiveAvgPool2d(output_size=(100, 1))
-
-        self.stixel = nn.Sequential(
-            nn.Conv2d(in_channels=num_channels, out_channels=50, kernel_size=1),
-        )
-        self.softmax = nn.Softmax()
-
-        #self.fc = nn.Linear(100*num_channels, num_classes)
+        self.in_channels = num_channels
+        self.pool = nn.AdaptiveAvgPool2d(output_size=1)
+        self.fc = nn.Linear(num_channels, num_classes)
 
     def forward(self, x):
         x = self.pool(x)
-        #x = x.view(x.size(0), -1)
-        x = self.stixel(x)
-        x = self.softmax(x)
-        x = x.view(x.shape[:3], -1).permute(0, 2, 1)
-        #x = self.fc(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
         return x
 
 
-class Stem(nn.Module): # From figure 3
+class Stem(nn.Module):  # From figure 3
 
     def __init__(self, out_channels):
         super(Stem, self).__init__()
@@ -53,7 +63,7 @@ class Stem(nn.Module): # From figure 3
         return x
 
 
-class XBlock(nn.Module): # From figure 4
+class XBlock(nn.Module):  # From figure 4
     def __init__(self, in_channels, out_channels, bottleneck_ratio, group_width, stride, se_ratio=None):
         super(XBlock, self).__init__()
         inter_channels = out_channels // bottleneck_ratio
@@ -63,10 +73,11 @@ class XBlock(nn.Module): # From figure 4
             nn.Conv2d(in_channels, inter_channels, kernel_size=1, bias=False),
             nn.BatchNorm2d(inter_channels),
             nn.ReLU(),
-            nn.Dropout(p=0.2)
+            #nn.Dropout(p=0.2)
         )
         self.conv_block_2 = nn.Sequential(
-            nn.Conv2d(inter_channels, inter_channels, kernel_size=3, stride=stride, groups=groups, padding=1, bias=False),
+            nn.Conv2d(inter_channels, inter_channels, kernel_size=3, stride=stride, groups=groups, padding=1,
+                      bias=False),
             nn.Dropout(p=0.2),
             nn.BatchNorm2d(inter_channels),
             nn.ReLU()
@@ -77,8 +88,8 @@ class XBlock(nn.Module): # From figure 4
             self.se = nn.Sequential(
                 nn.AdaptiveAvgPool2d(output_size=1),
                 nn.Conv2d(inter_channels, se_channels, kernel_size=1, bias=True),
-                nn.Dropout(p=0.2),
                 nn.ReLU(),
+                nn.Dropout(p=0.2),
                 nn.Conv2d(se_channels, inter_channels, kernel_size=1, bias=True),
                 nn.Sigmoid(),
             )
@@ -87,7 +98,7 @@ class XBlock(nn.Module): # From figure 4
 
         self.conv_block_3 = nn.Sequential(
             nn.Conv2d(inter_channels, out_channels, kernel_size=1, bias=False),
-            nn.Dropout(p=0.2),
+            #nn.Dropout(p=0.2),
             nn.BatchNorm2d(out_channels)
         )
         if stride != 1 or in_channels != out_channels:
@@ -113,11 +124,12 @@ class XBlock(nn.Module): # From figure 4
         return x
 
 
-class Stage(nn.Module): # From figure 3
+class Stage(nn.Module):  # From figure 3
     def __init__(self, num_blocks, in_channels, out_channels, bottleneck_ratio, group_width, stride, se_ratio):
         super(Stage, self).__init__()
         self.blocks = nn.Sequential()
-        self.blocks.add_module("block_0", XBlock(in_channels, out_channels, bottleneck_ratio, group_width, stride, se_ratio))
+        self.blocks.add_module("block_0",
+                               XBlock(in_channels, out_channels, bottleneck_ratio, group_width, stride, se_ratio))
         for i in range(1, num_blocks):
             self.blocks.add_module("block_{}".format(i),
                                    XBlock(out_channels, out_channels, bottleneck_ratio, group_width, 1, se_ratio))
@@ -141,7 +153,8 @@ class AnyNetX(nn.Module):
                                                                                          ls_bottleneck_ratio,
                                                                                          ls_group_width)):
             self.net.add_module("stage_{}".format(i),
-                                Stage(num_blocks, prev_block_width, block_width, bottleneck_ratio, group_width, stride, se_ratio))
+                                Stage(num_blocks, prev_block_width, block_width, bottleneck_ratio, group_width, stride,
+                                      se_ratio))
             prev_block_width = block_width
         self.net.add_module("head", Head(ls_block_width[-1], NUM_CLASSES))
         self.initialize_weight()
@@ -165,27 +178,32 @@ class AnyNetX(nn.Module):
 
 class AnyNetXb(AnyNetX):
     def __init__(self, ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio):
-        super(AnyNetXb, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio)
+        super(AnyNetXb, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride,
+                                       se_ratio)
         assert len(set(ls_bottleneck_ratio)) == 1
 
 
 class AnyNetXc(AnyNetXb):
     def __init__(self, ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio):
-        super(AnyNetXc, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio)
+        super(AnyNetXc, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride,
+                                       se_ratio)
         assert len(set(ls_group_width)) == 1
 
 
 class AnyNetXd(AnyNetXc):
     def __init__(self, ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio):
-        super(AnyNetXd, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio)
+        super(AnyNetXd, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride,
+                                       se_ratio)
         assert all(i <= j for i, j in zip(ls_block_width, ls_block_width[1:])) is True
 
 
 class AnyNetXe(AnyNetXd):
     def __init__(self, ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio):
-        super(AnyNetXe, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride, se_ratio)
+        super(AnyNetXe, self).__init__(ls_num_blocks, ls_block_width, ls_bottleneck_ratio, ls_group_width, stride,
+                                       se_ratio)
         if len(ls_num_blocks > 2):
             assert all(i <= j for i, j in zip(ls_num_blocks[:-2], ls_num_blocks[1:-1])) is True
+
 
 class RegNetX(AnyNetXe):
     def __init__(self, initial_width, slope, quantized_param, network_depth, bottleneck_ratio, group_width, stride,
@@ -210,7 +228,7 @@ class RegNetX(AnyNetXe):
         # print (ls_bottleneck_ratio)
         # print (ls_group_width)
         super(RegNetX, self).__init__(ls_num_blocks, ls_block_width.astype(np.int).tolist(), ls_bottleneck_ratio,
-                                       ls_group_width.tolist(), stride, se_ratio)
+                                      ls_group_width.tolist(), stride, se_ratio)
 
 
 class RegNetY(RegNetX):

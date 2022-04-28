@@ -432,44 +432,45 @@ class StixelAugmentation(object):
         ]
 
         self.val_transformations_list = [
-                A.Resize(height=size[1], width=size[0]),
-                A.Normalize()
+            A.Resize(height=size[1], width=size[0]),
+            A.Normalize()
         ]
 
-        self.train_transform = A.Compose(self.train_transformations_list)
+
+        #self.train_transform = A.Compose(self.train_transformations_list)
 
         self.train_target_transform = A.Compose(
             self.train_transformations_list,
             keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
         )
 
-        self.val_transform = A.Compose(self.val_transformations_list)
+        #self.val_transform = A.Compose(self.val_transformations_list)
 
         self.val_target_transform = A.Compose(
             self.val_transformations_list,
             keypoint_params=A.KeypointParams(format='xy', remove_invisible=False)
         )
 
-        self.mean = mean
-        self.size = size
-        self.augment = Compose([
-            ConvertFromInts(),
-            #Expand(self.mean),
-            #RandomMirror(),
-            Resize(self.size),
-            SubtractMeans(self.mean)
-        ])
-        self.target_augument = Compose([
-            ConvertFromInts(),
-            #Expand(self.mean),
-            #RandomMirror(),
-            Resize(self.size),
-            SubtractMeans(self.mean)
-        ])
+        # self.mean = mean
+        # self.size = size
+        # self.augment = Compose([
+        #     ConvertFromInts(),
+        #     #Expand(self.mean),
+        #     #RandomMirror(),
+        #     Resize(self.size),
+        #     SubtractMeans(self.mean)
+        # ])
+        # self.target_augument = Compose([
+        #     ConvertFromInts(),
+        #     #Expand(self.mean),
+        #     #RandomMirror(),
+        #     Resize(self.size),
+        #     SubtractMeans(self.mean)
+        # ])
 
-    def __call__(self, img, boxes, labels, phase='train'):
-        if phase == 'train':
-            return self.train_transform, self.train_target_transform
-        else:
-            return self.val_transform, self.val_target_transform
-        #return self.augment(img, boxes, labels)
+    # def __call__(self, img, boxes, labels, phase='aa'):
+    #     if phase == 'train':
+    #         return self.train_transform, self.train_target_transform
+    #     else:
+    #         return self.val_transform, self.val_target_transform
+    #     #return self.augment(img, boxes, labels)

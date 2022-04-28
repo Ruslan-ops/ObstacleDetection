@@ -10,14 +10,16 @@ from pathlib import Path
 
 
 class StixelsDataset(Dataset):
-    def __init__(self, annotations_path, target_transform=None):
+    def __init__(self, annotations_path, train_target_transform=None, val_target_transform=None, mode='train'):
         self.annotations = self._read_annotations_txt(annotations_path)
         self.dataset_path = Path(annotations_path).parent
         self.images_path = os.path.join(self.dataset_path, 'images/')
         self.targets_path = os.path.join(self.dataset_path, 'targets/')
         self.dataset_parent_path = self.dataset_path.parent
         #self.transform = transform
-        self.targets_transform = target_transform
+        self.train_target_transform = train_target_transform
+        self.val_target_transform = val_target_transform
+        self._mode = mode
 
     def __len__(self):
         return len(self.annotations)
@@ -38,7 +40,8 @@ class StixelsDataset(Dataset):
         stixel_columns_amount = settings.STIXEL_COLOMNS_AMOUNT
         bins_amount = settings.BINS_AMOUNT
         pointset = self._read_target_file(target_path)
-        transformed = self.targets_transform(image=image, keypoints=pointset)
+        transform = self.train_target_transform if self._mode == 'train' else self.val_target_transform
+        transformed = transform(image=image, keypoints=pointset)
         image, pointset = transformed['image'], transformed['keypoints']
         pointset = np.array(pointset, dtype=np.float32)
         pointset[:, 0] = pointset[:, 0] / (image.shape[1] + 1)
@@ -63,6 +66,7 @@ class StixelsDataset(Dataset):
                 pointset.append((x, y))
         return pointset
 
+
     def _read_annotations_txt(self, annotation_path):
         annotations = []
         with open(annotation_path) as f:
@@ -77,3 +81,9 @@ class StixelsDataset(Dataset):
         image = cv2.imread(img_path)
 
         return image
+
+    def set_train_mode(self):
+        self._mode = 'train'
+
+    def set_val_mode(self):
+        self._mode = 'val'
