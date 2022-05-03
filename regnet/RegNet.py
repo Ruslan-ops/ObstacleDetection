@@ -15,24 +15,6 @@ import torch.nn as nn
 from math import sqrt
 
 
-class StixelHead(nn.Module):  # From figure 3
-    def __init__(self, num_channels, num_classes=50):
-        super(StixelHead, self).__init__()
-        self.pool = nn.AdaptiveAvgPool2d(output_size=(100, 1))
-
-        self.stixel = nn.Sequential(
-            nn.Conv2d(in_channels=num_channels, out_channels=num_classes, kernel_size=1),
-        )
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(self, x):
-        x = self.pool(x)
-        x = self.stixel(x)
-        x = x.view(x.shape[:3], -1).permute(0, 2, 1)
-        x = self.softmax(x)
-        return x
-
-
 class Head(nn.Module):  # From figure 3
 
     def __init__(self, num_channels, num_classes):
@@ -78,7 +60,7 @@ class XBlock(nn.Module):  # From figure 4
         self.conv_block_2 = nn.Sequential(
             nn.Conv2d(inter_channels, inter_channels, kernel_size=3, stride=stride, groups=groups, padding=1,
                       bias=False),
-            nn.Dropout(p=0.2),
+            #nn.Dropout(p=0.2),
             nn.BatchNorm2d(inter_channels),
             nn.ReLU()
         )
@@ -89,7 +71,7 @@ class XBlock(nn.Module):  # From figure 4
                 nn.AdaptiveAvgPool2d(output_size=1),
                 nn.Conv2d(inter_channels, se_channels, kernel_size=1, bias=True),
                 nn.ReLU(),
-                nn.Dropout(p=0.2),
+                #nn.Dropout(p=0.2),
                 nn.Conv2d(se_channels, inter_channels, kernel_size=1, bias=True),
                 nn.Sigmoid(),
             )

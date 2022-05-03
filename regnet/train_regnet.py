@@ -11,32 +11,45 @@ import torch.nn.parallel
 from torch.utils.data import DataLoader
 from torch.optim import SGD
 from torch.utils.tensorboard import SummaryWriter
-
+import torchvision
+from StixelRegNet import *
+import regnet.local.custom_regnet
 from RegNet import *
 from RegDataset import *
 
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser(
         description="Implementation of paradigm described in paper: Designing Network Design Spaces published by Facebook AI Research (FAIR)")
 
     parser.add_argument("-d", "--data_path", type=str, default="data", help="the root folder of dataset")
-    parser.add_argument("-e", "--epochs", default=100, type=int, help="number of total epochs to run")
-    parser.add_argument("-b", "--batch_size", default=32, type=int)
-    parser.add_argument("-l", "--lr", default=0.1, type=float, help="initial learning rate")
+    parser.add_argument("-e", "--epochs", default=200, type=int, help="number of total epochs to run")
+    parser.add_argument("-b", "--batch_size", default=48, type=int)
+    parser.add_argument("-l", "--lr", default=0.00000001, type=float, help="initial learning rate")
     parser.add_argument("-m", "--momentum", default=0.9, type=float, help="momentum")
     parser.add_argument("-w", "--weight_decay", default=5e-4, type=float, help="weight decay")
     parser.add_argument("--log_path", type=str, default="tensorboard/signatrix_regnet_imagenet")
     parser.add_argument("--saved_path", type=str, default="trained_models")
 
-    # These default parameters are for RegnetY 200MF
+    # # These default parameters are for RegnetY 200MF
+    # parser.add_argument("--bottleneck_ratio", default=1, type=int)
+    # parser.add_argument("--group_width", default=8, type=int)
+    # parser.add_argument("--initial_width", default=24, type=int)
+    # parser.add_argument("--slope", default=36, type=float)
+    # parser.add_argument("--quantized_param", default=2.5, type=float)
+    # parser.add_argument("--network_depth", default=13, type=int)
+    # parser.add_argument("--stride", default=2, type=int)
+    # parser.add_argument("--se_ratio", default=4, type=int)
+
+    # These default parameters are for RegnetY 800MF
     parser.add_argument("--bottleneck_ratio", default=1, type=int)
-    parser.add_argument("--group_width", default=8, type=int)
-    parser.add_argument("--initial_width", default=24, type=int)
-    parser.add_argument("--slope", default=36, type=float)
-    parser.add_argument("--quantized_param", default=2.5, type=float)
-    parser.add_argument("--network_depth", default=13, type=int)
+    parser.add_argument("--group_width", default=16, type=int)
+    parser.add_argument("--initial_width", default=56, type=int)
+    parser.add_argument("--slope", default=39, type=float)
+    parser.add_argument("--quantized_param", default=2.4, type=float)
+    parser.add_argument("--network_depth", default=14, type=int)
     parser.add_argument("--stride", default=2, type=int)
     parser.add_argument("--se_ratio", default=4, type=int)
 
@@ -45,7 +58,7 @@ def get_args():
 
 def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = lr * (0.1 ** (epoch // 30))
+    lr = lr * (0.86 ** (epoch // 2)) #lr * (0.1 ** (epoch // 30))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -81,14 +94,24 @@ def main(opt):
         os.makedirs(opt.saved_path)
 
     writer = SummaryWriter(opt.log_path)
-    model = RegNetY(opt.initial_width, opt.slope, opt.quantized_param, opt.network_depth, opt.bottleneck_ratio,
-                    opt.group_width, opt.stride, opt.se_ratio)
+    model = regnet_y_800mf(pretrained=True)#create_stixel_model('regnet/trained_models/model.pt') #model = torchvision.models.regnet_y_400mf(pretrained=True) #
+    # model = RegNetY(opt.initial_width, opt.slope, opt.quantized_param, opt.network_depth, opt.bottleneck_ratio,
+    #                 opt.group_width, opt.stride, opt.se_ratio)
+    # weight_path = 'trained_models/66_27.65740394592285_model.pt'
+    # pretrained_weights_old = torch.load(weight_path, map_location=torch.device(device))
+    # pretrained_weightsss =  pretrained_weights_old.copy()
+    # for k in pretrained_weights_old:
+    #     if k.startswith('module.'):
+    #         new_key = k[7:]
+    #         pretrained_weightsss[new_key] = pretrained_weightsss.pop(k)
+    #
+    # model.load_state_dict(pretrained_weightsss)
 
     dummy_input = torch.randn((1, 3, TRAIN_IMAGE_SIZE, TRAIN_IMAGE_SIZE))
     writer.add_graph(model, dummy_input)
     # Calculate model FLOPS and number of parameters
     count_ops(model, dummy_input, verbose=False)
-    summary(model, (3, TRAIN_IMAGE_SIZE, TRAIN_IMAGE_SIZE), device="cpu")
+    summary(model, (3, TRAIN_IMAGE_SIZE, TRAIN_IMAGE_SIZE), device='cpu')
 
     if torch.cuda.is_available():
         model = nn.DataParallel(model)
@@ -96,7 +119,7 @@ def main(opt):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay, nesterov=True)
-    best_acc1 = 10
+    best_acc1 = 1.
     model.train()
 
     for epoch in range(opt.epochs):
@@ -210,8 +233,10 @@ def validate(val_loader, model, criterion, epoch, writer):
 def save_checkpoint(state, is_best, saved_path, filename="checkpoint.pth.tar"):
     file_path = os.path.join(saved_path, filename)
     torch.save(state, file_path)
-    torch.save(state['state_dict'], os.path.join(saved_path, 'model.pt'))
     if is_best:
+        epoch = state['epoch']
+        acc1 = state['best_acc1']
+        torch.save(state['state_dict'], os.path.join(saved_path, f'{epoch}_{acc1}_model.pt'))
         shutil.copyfile(file_path, os.path.join(saved_path, "best_checkpoint.pth.tar")) #"best_checkpoint.pth.tar"
 
 
