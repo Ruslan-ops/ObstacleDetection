@@ -408,6 +408,17 @@ def _regnet(arch: str, block_params: BlockParams, pretrained: bool, progress: bo
         model.load_state_dict(state_dict)
     return model
 
+def regnet_y_200mf(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> RegNet:
+    """
+    Constructs a RegNetY_400MF architecture from
+    `"Designing Network Design Spaces" <https://arxiv.org/abs/2003.13678>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    params = BlockParams.from_init_params(depth=13, w_0=24, w_a=36, w_m=2.5, group_width=8, se_ratio=0.29, **kwargs)
+    return _regnet("regnet_y_400mf", params, pretrained, progress, **kwargs)
 
 def regnet_y_400mf(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> RegNet:
     """

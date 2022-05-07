@@ -15,8 +15,12 @@ class StixelLoss(nn.Module):
         self.epoch=0
 
     def forward(self, predect, havetarget, target):
+        loss = self._PL_loss(predect, havetarget, target)
+        return loss
+
+    def _PL_loss(self, predect, havetarget, target):
         target = (target - 0.5).view(target.size(0), target.size(1), 1)
-        target = (target - torch.floor(target)) + torch.floor(target) + 0.0001
+        target = (target - torch.floor(target)) + torch.floor(target) + 1e-12
         target = target.view(target.size(0), target.size(1), 1)
         f_tensor = torch.floor(target).type(torch.LongTensor)
         c_tensor = torch.ceil(target).type(torch.LongTensor)

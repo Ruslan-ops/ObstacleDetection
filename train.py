@@ -21,9 +21,9 @@ import settings
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=4, type=int, help='Batch size for training')
+parser.add_argument('--batch_size', default=32, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=0.05, type=float, help='initial learning rate')
+parser.add_argument('--lr', '--learning-rate', default=0.5, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.9, type=float, help='Gamma update for SGD')
@@ -39,7 +39,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # if torch.cuda.is_available():
 #     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 # torch.set_default_tensor_type('torch.cuda.FloatTensor')
-ssd_dim = (800, 370)  # the size of image after resize (width,height)
+ssd_dim = (400, 185)  # the size of image after resize (width,height)
 means = (104, 117, 123)
 num_classes = 9 + 1
 batch_size = args.batch_size
@@ -85,7 +85,7 @@ net = net.to(device)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=args.momentum, weight_decay=args.weight_decay)
-scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.97)
 
 
 def train_one_step(model, data, optimizer):
@@ -182,7 +182,7 @@ def stixel_train():
 
     log_path = 'log.txt'
     with open(log_path, 'w') as log:
-        for epoch in range(10000):
+        for epoch in range(1000):
             total_train_loss = train_one_epoch(model, train_data_loader, optimizer, scheduler)
             total_val_loss = validate_one_epoch(model, val_data_loader)
             if epoch % 2 == 0:
@@ -201,7 +201,7 @@ def stixel_train():
             log.write(info + '\n')
 
             if early_stop(avg_val_loss, avg_train_loss):
-                break
+                pass #break
 
 
 

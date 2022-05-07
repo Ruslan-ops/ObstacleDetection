@@ -229,7 +229,7 @@ def project_lidar_on_image(image, pts_velo, calib):
 
 def render_lidar_on_image(pts_velo, img, calib, img_width, img_height):
     # projection matrix (project from velo2cam2)
-    proj_velo2cam2 = get_velo_to_cam_projection_matrix_from_object_calib(calib)
+    proj_velo2cam2 = get_velo_to_cam_projection_matrix(calib)
 
     # apply projection
     pts_2d = project_to_image(pts_velo.transpose(), proj_velo2cam2)

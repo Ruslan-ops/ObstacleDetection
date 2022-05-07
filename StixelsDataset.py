@@ -38,14 +38,16 @@ class StixelsDataset(Dataset):
     def _get_target(self, target_path, image):
         #h, w = image.shape[0], image.shape[1]
         stixel_columns_amount = settings.STIXEL_COLOMNS_AMOUNT
-        bins_amount = settings.BINS_AMOUNT
+        bins_amount = settings.POSITION_NEURONS_AMOUNT
         pointset = self._read_target_file(target_path)
         transform = self.train_target_transform if self._mode == 'train' else self.val_target_transform
         transformed = transform(image=image, keypoints=pointset)
         image, pointset = transformed['image'], transformed['keypoints']
         pointset = np.array(pointset, dtype=np.float32)
-        pointset[:, 0] = pointset[:, 0] / (image.shape[1] + 1)
-        pointset[:, 1] = pointset[:, 1] / image.shape[0]
+        h, w = image.shape[0], image.shape[1]
+        pointset[:, 0] = pointset[:, 0] / (w + 1)
+        #pointset[:, 1] = pointset[:, 1] / image.shape[0]
+        pointset[:, 1] = (pointset[:, 1] - ((1 - settings.MAX_STIXEL_HEIGHT_PART) * h)) / (settings.MAX_STIXEL_HEIGHT_PART * h)
         have_target = np.zeros((stixel_columns_amount), dtype=np.float32)
         targets = np.zeros((stixel_columns_amount), dtype=np.float32)
         for p in pointset:
@@ -54,7 +56,8 @@ class StixelsDataset(Dataset):
             if op > targets[index]:
                 targets[index] = op
                 have_target[index] = 1
-        targets = np.clip(targets, 0.51, 49.49)
+        delta = 0.51
+        targets = np.clip(targets, delta, settings.POSITION_NEURONS_AMOUNT - delta)
         return have_target, targets, image
 
     def _read_target_file(self, target_path):

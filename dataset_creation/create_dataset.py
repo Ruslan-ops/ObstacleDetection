@@ -47,8 +47,8 @@ def create_dataset_simple(image_path, object_calib_path, calib_path, pcd_path, i
     X, Y, Z = interpolation(velo_pixels[0], velo_pixels[1], depth, (velo_height, rgb.shape[1]))
 
     Z = ndimage.gaussian_filter(Z, sigma=(3, 1.5), order=0)
-    # plt.imshow(Z)
-    # plt.show()
+    plt.imshow(Z)
+    plt.show()
 
     depth_gradient_x = get_depth_gradient(Z, axis=0)
     # plot(X, Y, depth_gradient_x)
@@ -449,7 +449,36 @@ def create_dataset_annotations(dataset_path):
 
 
 if __name__ == '__main__':
-    create_dataset('source_data', remove_source_images=False)
+    calib_path = 'source_data/2011_09_26/calibration'
+    pcd_path = 'source_dataOOOOOllldd/2011_09_26/46/lidar/0000000020.bin'
+    img_path =  'source_dataOOOOOllldd/2011_09_26/46/images/0000000020.png'
+    calib = read_calib_file(calib_path)
+    rgb = cv2.imread(img_path)
+    img_width, img_height = rgb.shape[0], rgb.shape[1]
+    # Load labels
+    # labels = load_label('2011_09_28/000114_label.txt')
+
+    # Load Lidar PC
+    pc_velo = load_pc_velo_scan(pcd_path)
+    o3d.visualization.draw_geometries([pc_velo])
+    pc_velo = np.asarray(pc_velo.points)
+    # pc_velo = remove_ground(pcd)
+    #pc_velo = pc_velo[:, :3]
+
+    # render_image_with_boxes(rgb, labels, calib)
+    # render_lidar_with_boxes(pc_velo, labels, calib, img_width=img_width, img_height=img_height)
+    _, velo_pixels, depth, velo_height = render_lidar_on_image(pc_velo, rgb, calib, img_width, img_height)
+
+    X, Y, Z = interpolation(velo_pixels[0], velo_pixels[1], depth, (velo_height, rgb.shape[1]))
+
+    Z = ndimage.gaussian_filter(Z, sigma=(3, 1.5), order=0)
+    plt.imshow(Z)
+    plt.show()
+
+
+
+
+    #create_dataset('source_data', remove_source_images=False)
     #create_dataset_harder('source_data/2011_09_26/95/images/0000000040.png', 'source_data/2011_09_26/calibration', 'source_data/2011_09_26/95/lidar/0000000040.bin')
     # image = cv2.imread('source_data/2011_09_26/46/images/0000000020.png')
     # calib = read_calib_file('source_data/2011_09_26/calibration')
