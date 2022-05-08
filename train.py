@@ -193,9 +193,9 @@ def stixel_train():
 
             print("Epoch: %d lr: %.6f train_loss: %.6f val_loss: %.6f" % (epoch, optimizer.param_groups[0]['lr'], avg_train_loss, avg_val_loss))
 
-            if total_train_loss < min_val_loss:
-                min_val_loss = total_train_loss
-                save_model_and_delete_old(epoch, total_train_loss, max_models_num=5)
+            if avg_val_loss < min_val_loss:
+                min_val_loss = avg_val_loss
+                save_model_and_delete_old(epoch, avg_val_loss, max_models_num=5)
 
             info = f'{epoch}\t{avg_train_loss}\t{avg_val_loss}'
             log.write(info + '\n')
